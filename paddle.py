@@ -1,27 +1,37 @@
 import pygame
 
-class paddle:
-    def __init__(self, x, y):
-        self.location = pygame.Vector2(x, y)
+
+class Paddle(pygame.sprite.Sprite):
+    surface: pygame.Surface
+    velocity: pygame.Vector2
+    paddle_width: int
+    paddle_height: int
+    rect: pygame.Rect
+    oldrect: pygame.Rect
+
+    def __init__(self, surface: pygame.Surface, x: int, y: int) -> None:
+        super().__init__()
+        self.surface = surface
         self.velocity = pygame.Vector2(0, 0)
         self.paddle_width, self.paddle_height = 30, 150
         self.rect = pygame.Rect(
-            self.location.x, self.location.y, self.paddle_width, self.paddle_height)
+            x, y, self.paddle_width, self.paddle_height)
         self.oldrect = pygame.Rect(
-            self.location.x, self.location.y, self.paddle_width, self.paddle_height)
+            x, y, self.paddle_width, self.paddle_height)
 
-    def update(self):
-        self.oldrect = self.rect
-        self.location += self.velocity
-
-    def check_edges(self, WINDOWHEIGHT):
-        if self.location.y < 0:
-            self.velocity.y, self.location.y = 0, 0
-        if self.location.y + self.paddle_height > WINDOWHEIGHT:
-            self.location.y = WINDOWHEIGHT - self.paddle_height
+    def check_edges(self) -> None:
+        if self.rect.top < 0:
+            self.velocity.y = 0
+            self.rect.top = 0
+        if self.rect.bottom > self.surface.get_height():
+            self.rect.bottom = self.surface.get_height()
             self.velocity.y = 0
 
-    def draw(self, surface):
-        self.rect = pygame.Rect(
-            self.location.x, self.location.y, self.paddle_width, self.paddle_height)
-        pygame.draw.rect(surface, pygame.Color(255, 255, 255), self.rect)
+    def update(self) -> None:
+        pygame.sprite.Sprite.update(self)
+        self.check_edges()
+        self.oldrect = self.rect
+        self.rect.topleft += self.velocity
+
+    def draw(self) -> None:
+        pygame.draw.rect(self.surface, pygame.Color(255, 255, 255), self.rect)

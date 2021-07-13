@@ -1,11 +1,12 @@
 from pygame.locals import *
+from paddle import Paddle
+from ball import Ball
 import pygame
 import sys
 import time
-import sound
-from paddle import paddle
-from ball import ball
+import sounds
 import gui
+import fonts
 pygame.init()
 
 WINDOWWIDTH, WINDOWHEIGHT = 600, 600
@@ -15,39 +16,52 @@ fpsClock = pygame.time.Clock()
 DISPLAYSURF = pygame.display.set_mode(WINDOW_DIMENSIONS, 0, 32)
 PADDLE_VELOCITY = 7
 
-font = pygame.font.Font('fonts/Georgia.ttf', 20)
-pong_font = pygame.font.Font('fonts/bit5x3.ttf', 30)
-pong_font_title = pygame.font.Font('fonts/bit5x3.ttf', 70)
+font = fonts.make_font("Georgia.ttf", 20)
+pong_font = fonts.make_font("bit5x3.ttf", 30)
+pong_font_title = fonts.make_font("bit5x3.ttf", 30)
 
+player_one = Paddle(DISPLAYSURF, 40, WINDOWHEIGHT // 3)
+player_two = Paddle(DISPLAYSURF, WINDOWWIDTH - 70, WINDOWHEIGHT // 3)
+ball = Ball(DISPLAYSURF, WINDOWWIDTH // 2, WINDOWHEIGHT // 2)
+
+players = pygame.sprite.Group()
+players.add(player_one)
+players.add(player_two)
+
+
+def reset_positions():
+    player_one.rect.topleft = pygame.Vector2(40, WINDOWHEIGHT/3)
+    player_two.rect.topleft = pygame.Vector2(WINDOWWIDTH - 70, WINDOWHEIGHT/3)
+
+def draw_scores(score_one : str, score_two : str, spacing : int):
+    gui.draw_text(DISPLAYSURF, str(score_one), pong_font, pygame.Color('white'), WINDOWWIDTH // 2 - spacing, 20)
+    gui.draw_text(DISPLAYSURF, str(score_two), pong_font, pygame.Color('white'), WINDOWWIDTH // 2 + spacing, 20)
 
 def main_menu():
     while True:
         DISPLAYSURF.fill(pygame.Color('black'))
+        gui.draw_text(DISPLAYSURF, 'PONG', pong_font_title, pygame.Color('white'), 0, 50, center=True)
 
-        gui.draw_text_center('PONG', pong_font_title,
-                             pygame.Color('white'), DISPLAYSURF, 0, 50)
-        play_button = gui.button('PLAY', pong_font, pygame.Color(
-            'white'),  pygame.Color('yellow'), 0, 150)
-        exit_button = gui.button('EXIT', pong_font, pygame.Color(
-            'white'), pygame.Color('yellow'), 0, 210)
+        play_button = gui.Button(DISPLAYSURF, 'PLAY', pong_font, pygame.Color('white'), pygame.Color('yellow'), 0, 150)
+        exit_button = gui.Button(DISPLAYSURF, 'EXIT', pong_font, pygame.Color('white'), pygame.Color('yellow'), 0, 210)
 
-        mx, my = pygame.mouse.get_pos()
+        mouse_x, mouse_y = pygame.mouse.get_pos()
 
-        if play_button.get_rect_centered(DISPLAYSURF).collidepoint(mx, my):
+        if play_button.get_rect(center=True).collidepoint(mouse_x, mouse_y):
             if click:
-                pygame.mixer.Sound.play(sound.menu_click)
+                sounds.play("menu_click.wav")
                 game()
-            play_button.draw_text_centered(DISPLAYSURF, hover=True)
+            play_button.draw_text(center=True, hover=True)
         else:
-            play_button.draw_text_centered(DISPLAYSURF)
+            play_button.draw_text(center=True, hover=False)
 
-        if exit_button.get_rect_centered(DISPLAYSURF).collidepoint(mx, my):
+        if exit_button.get_rect(center=True).collidepoint(mouse_x, mouse_y):
             if click:
                 pygame.quit()
                 sys.exit()
-            exit_button.draw_text_centered(DISPLAYSURF, True)
+            exit_button.draw_text(center=True, hover=True)
         else:
-            exit_button.draw_text_centered(DISPLAYSURF)
+            exit_button.draw_text(center=True, hover=False)
 
         click = False
         for event in pygame.event.get():
@@ -59,17 +73,6 @@ def main_menu():
                     click = True
         pygame.display.update()
         fpsClock.tick(FPS)
-
-
-player_one = paddle(40, WINDOWHEIGHT/3)
-player_two = paddle(WINDOWWIDTH - 70, WINDOWHEIGHT/3)
-players = [player_one, player_two]
-playing_ball = ball(WINDOWWIDTH/2, WINDOWHEIGHT/2)
-
-
-def reset_positions():
-    player_one.location = pygame.Vector2(40, WINDOWHEIGHT/3)
-    player_two.location = pygame.Vector2(WINDOWWIDTH - 70, WINDOWHEIGHT/3)
 
 
 def game():
@@ -98,53 +101,47 @@ def game():
                     player_two.velocity = pygame.Vector2(0, 0)
 
         DISPLAYSURF.fill(pygame.Color('black'))
+
         for player in players:
-            player.update()
-            player.check_edges(WINDOWHEIGHT=DISPLAYSURF.get_height())
-            player.draw(DISPLAYSURF)
-            if playing_ball.crect.colliderect(player.rect):
-                if playing_ball.oldcrect.left >= player.oldrect.right and playing_ball.crect.left <= player.rect.right:
-                    playing_ball.bounce()
-                    playing_ball.crect.left = player.rect.right
-                if playing_ball.oldcrect.right <= player.oldrect.left and playing_ball.crect.right >= player.rect.left:
-                    playing_ball.bounce()
-                    playing_ball.crect.right = player.rect.left
-                if playing_ball.oldcrect.top >= player.oldrect.bottom and playing_ball.crect.top <= player.rect.bottom:
-                    playing_ball.crect.top = player.rect.bottom
-                    if playing_ball.velocity.y < 0:
-                        playing_ball.velocity.y = -playing_ball.velocity.y
+            if ball.rect.colliderect(player.rect):
+                if ball.oldrect.left >= player.oldrect.right and ball.rect.left <= player.rect.right:
+                    ball.bounce()
+                    ball.rect.left = player.rect.right
+                if ball.oldrect.right <= player.oldrect.left and ball.rect.right >= player.rect.left:
+                    ball.bounce()
+                    ball.rect.right = player.rect.left
+                if ball.oldrect.top >= player.oldrect.bottom and ball.rect.top <= player.rect.bottom:
+                    ball.rect.top = player.rect.bottom
+                    if ball.velocity.y < 0:
+                        ball.velocity.y *= -1 
                     else:
-                        playing_ball.velocity.y -= 0.1
-                if playing_ball.oldcrect.bottom <= player.oldrect.top and playing_ball.crect.bottom >= player.rect.top:
-                    playing_ball.velocity.y = -playing_ball.velocity.y
-                    playing_ball.crect.bottom = player.rect.top
-                pygame.mixer.Sound.play(sound.blip_paddle)
-        if playing_ball.crect.left < 0:
-            playing_ball.__init__(WINDOWWIDTH/2, WINDOWHEIGHT/2)
+                        ball.velocity.y -= 0.1
+                if ball.oldrect.bottom <= player.oldrect.top and ball.rect.bottom >= player.rect.top:
+                    ball.velocity.y = -ball.velocity.y
+                    ball.rect.bottom = player.rect.top
+                sounds.play("blip_paddle.wav")
+
+        if ball.off_screen():
             reset_positions()
-            score_two += 1
-            pygame.mixer.Sound.play(sound.point_beep)
+            sounds.play("point_beep.wav")
             time.sleep(1)
-        if playing_ball.crect.right > WINDOWWIDTH:
-            playing_ball.__init__(WINDOWWIDTH/2, WINDOWHEIGHT/2)
-            reset_positions()
-            score_one += 1
-            pygame.mixer.Sound.play(sound.point_beep)
-            time.sleep(1)
-        gui.draw_text(str(score_one), pong_font, pygame.Color(
-            'white'), DISPLAYSURF, WINDOWWIDTH/2 + 20, 20)
-        gui.draw_text(str(score_two), pong_font, pygame.Color(
-            'white'), DISPLAYSURF, WINDOWWIDTH/2 - 20, 20)
-        playing_ball.update()
-        playing_ball.check_edges(WINDOWHEIGHT=DISPLAYSURF.get_height())
-        playing_ball.draw(DISPLAYSURF)
+            if ball.rect.left <= 0:
+                score_two += 1
+            else:
+                score_one += 1
+            ball.rect.center = WINDOWWIDTH // 2, WINDOWHEIGHT // 2
+
+        for player in players:
+            player.draw()
+        players.update()
+
+        ball.update()
+        ball.draw()
+
+        draw_scores(score_one, score_two, 30)
         fpsClock.tick(FPS)
         pygame.display.update()
 
 
-def main():
-    main_menu()
-
-
 if __name__ == '__main__':
-    main()
+    main_menu()
