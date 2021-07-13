@@ -38,6 +38,7 @@ def draw_scores(score_one : str, score_two : str, spacing : int):
     gui.draw_text(DISPLAYSURF, str(score_two), pong_font, pygame.Color('white'), WINDOWWIDTH // 2 + spacing, 20)
 
 def main_menu():
+    click = None
     while True:
         DISPLAYSURF.fill(pygame.Color('black'))
         gui.draw_text(DISPLAYSURF, 'PONG', pong_font_title, pygame.Color('white'), 0, 50, center=True)
@@ -46,11 +47,10 @@ def main_menu():
         exit_button = gui.Button(DISPLAYSURF, 'EXIT', pong_font, pygame.Color('white'), pygame.Color('yellow'), 0, 210)
 
         mouse_x, mouse_y = pygame.mouse.get_pos()
-
         if play_button.get_rect(center=True).collidepoint(mouse_x, mouse_y):
             if click:
                 sounds.play("menu_click.wav")
-                game()
+                select_play()
             play_button.draw_text(center=True, hover=True)
         else:
             play_button.draw_text(center=True, hover=False)
@@ -74,10 +74,188 @@ def main_menu():
         pygame.display.update()
         fpsClock.tick(FPS)
 
+def select_play():
+    click = None     
+    while True:
+        DISPLAYSURF.fill(pygame.Color('black'))
+        gui.draw_text(DISPLAYSURF, 'PONG', pong_font_title, pygame.Color('white'), 0, 50, center=True)
 
-def game():
+        single_player_button = gui.Button(DISPLAYSURF, 'SINGLE PLAYER', pong_font, pygame.Color('white'), pygame.Color('yellow'), 0, 150)
+        multi_player_button = gui.Button(DISPLAYSURF, 'MULTIPLAYER', pong_font, pygame.Color('white'), pygame.Color('yellow'), 0, 210)
+        back_button = gui.Button(DISPLAYSURF, 'BACK', pong_font, pygame.Color('white'), pygame.Color('yellow'), 0, 270)
+
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+
+        if multi_player_button.get_rect(center=True).collidepoint(mouse_x, mouse_y):
+            multi_player_button.draw_text(center=True, hover=True)
+            if click:
+                sounds.play("menu_click.wav")
+                multiplayer()
+        else:
+            multi_player_button.draw_text(center=True, hover=False)
+
+        if single_player_button.get_rect(center=True).collidepoint(mouse_x, mouse_y):
+            single_player_button.draw_text(center=True, hover=True)
+            if click:
+                sounds.play("menu_click.wav")
+                single_player()
+        else:
+            single_player_button.draw_text(center=True, hover=False)
+
+        if back_button.get_rect(center=True).collidepoint(mouse_x, mouse_y):
+            back_button.draw_text(center=True, hover=True)
+            if click:
+                sounds.play("menu_click.wav")
+                break
+        else:
+            back_button.draw_text(center=True, hover=False)
+
+        click = False 
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    click = True
+        pygame.display.update()
+        fpsClock.tick(FPS)   
+
+        
+def single_player():
     score_one = 0
     score_two = 0
+
+
+    #Starting countdown!
+    DISPLAYSURF.fill(pygame.Color('black'))
+    pygame.display.update()
+
+    gui.draw_text(DISPLAYSURF, '3', pong_font_title, pygame.Color('white'), WINDOWWIDTH//2, WINDOWHEIGHT//2, center=True)
+    sounds.play("point_beep.wav")
+    pygame.display.update()
+    time.sleep(1)
+
+    DISPLAYSURF.fill(pygame.Color('black'))
+    gui.draw_text(DISPLAYSURF, '2', pong_font_title, pygame.Color('white'), WINDOWWIDTH//2, WINDOWHEIGHT//2, center=True)
+    sounds.play("point_beep.wav")
+    pygame.display.update()
+    time.sleep(1)
+
+    DISPLAYSURF.fill(pygame.Color('black'))
+    gui.draw_text(DISPLAYSURF, '1', pong_font_title, pygame.Color('white'), WINDOWWIDTH//2, WINDOWHEIGHT//2, center=True)
+    sounds.play("point_beep.wav")
+    pygame.display.update()
+    time.sleep(1)
+
+    DISPLAYSURF.fill(pygame.Color('black'))
+    gui.draw_text(DISPLAYSURF, 'GO', pong_font_title, pygame.Color('white'), WINDOWWIDTH//2, WINDOWHEIGHT//2, center=True)
+    sounds.play("point_beep.wav")
+    pygame.display.update()
+    time.sleep(1)
+
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_s or event.key == pygame.K_DOWN:
+                    player_one.velocity = pygame.Vector2(0, PADDLE_VELOCITY)
+                if event.key == pygame.K_w or event.key == pygame.K_UP:
+                    player_one.velocity = pygame.Vector2(0, -PADDLE_VELOCITY)
+
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_s or event.key == pygame.K_w or event.key == pygame.K_DOWN or event.key == pygame.K_UP:
+                    player_one.velocity = pygame.Vector2(0, 0)
+
+        #Setting AI's velocity
+        ai_velocity = ball.rect.center[0] - player_two.rect.midleft[0], ball.rect.center[1] - player_two.rect.midleft[1]
+        ai_velocity_vector = pygame.Vector2(ai_velocity[0], ai_velocity[1])
+        if ai_velocity_vector.magnitude() < 350:
+            player_two.velocity.y = ai_velocity_vector.y * 0.05
+
+
+        DISPLAYSURF.fill(pygame.Color('black'))
+
+        for player in players:
+            if ball.rect.colliderect(player.rect):
+                if ball.oldrect.left >= player.oldrect.right and ball.rect.left <= player.rect.right:
+                    ball.bounce()
+                    ball.rect.left = player.rect.right
+                if ball.oldrect.right <= player.oldrect.left and ball.rect.right >= player.rect.left:
+                    ball.bounce()
+                    ball.rect.right = player.rect.left
+                if ball.oldrect.top >= player.oldrect.bottom and ball.rect.top <= player.rect.bottom:
+                    ball.rect.top = player.rect.bottom
+                    if ball.velocity.y < 0:
+                        ball.velocity.y *= -1 
+                    else:
+                        ball.velocity.y -= 0.1
+                if ball.oldrect.bottom <= player.oldrect.top and ball.rect.bottom >= player.rect.top:
+                    ball.velocity.y = -ball.velocity.y
+                    ball.rect.bottom = player.rect.top
+                sounds.play("blip_paddle.wav")
+
+        if ball.off_screen():
+            reset_positions()
+            sounds.play("point_beep.wav")
+            time.sleep(1)
+            if ball.rect.left <= 0:
+                score_two += 1
+            else:
+                score_one += 1
+            ball.rect.center = WINDOWWIDTH // 2, WINDOWHEIGHT // 2
+
+        for player in players:
+            player.draw()
+        players.update()
+
+        ball.update()
+        ball.draw()
+
+        draw_scores(score_one, score_two, 30)
+        fpsClock.tick(FPS)
+        pygame.display.update()
+
+   
+
+
+def multiplayer():
+    score_one = 0
+    score_two = 0
+
+
+    #Starting countdown!
+    DISPLAYSURF.fill(pygame.Color('black'))
+    pygame.display.update()
+
+    gui.draw_text(DISPLAYSURF, '3', pong_font_title, pygame.Color('white'), WINDOWWIDTH//2, WINDOWHEIGHT//2, center=True)
+    sounds.play("point_beep.wav")
+    pygame.display.update()
+    time.sleep(1)
+
+    DISPLAYSURF.fill(pygame.Color('black'))
+    gui.draw_text(DISPLAYSURF, '2', pong_font_title, pygame.Color('white'), WINDOWWIDTH//2, WINDOWHEIGHT//2, center=True)
+    sounds.play("point_beep.wav")
+    pygame.display.update()
+    time.sleep(1)
+
+    DISPLAYSURF.fill(pygame.Color('black'))
+    gui.draw_text(DISPLAYSURF, '1', pong_font_title, pygame.Color('white'), WINDOWWIDTH//2, WINDOWHEIGHT//2, center=True)
+    sounds.play("point_beep.wav")
+    pygame.display.update()
+    time.sleep(1)
+
+    DISPLAYSURF.fill(pygame.Color('black'))
+    gui.draw_text(DISPLAYSURF, 'GO', pong_font_title, pygame.Color('white'), WINDOWWIDTH//2, WINDOWHEIGHT//2, center=True)
+    sounds.play("point_beep.wav")
+    pygame.display.update()
+    time.sleep(1)
+
+
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
